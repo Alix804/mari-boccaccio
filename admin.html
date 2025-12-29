@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Boccaccio Admin - Gestione Opere e Mari</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; height: 100vh; margin: 0; background: #2c3e50; color: #333; }
+        
+        /* Area Mappe */
+        /* Colonna mappe a sinistra (prende 75%), pannello destro 25% */
+        #maps-area { flex: 1 1 auto; padding: 15px; display: flex; flex-direction: column; gap: 15px; overflow-y: auto; background: #34495e; position: sticky; top: 0; height: 100vh; align-items: stretch; }
+        .map-box { position: relative; background: #1a1a1a; border: 4px solid #bdc3c7; width: 100%; max-width: none; margin: 0; border-radius: 8px; overflow: hidden; }
+        /* Prima mappa (antica) occupa lo spazio rimanente */
+        #maps-area .map-box:nth-of-type(1) { flex: 1 1 auto; max-width: 1200px; }
+        /* Seconda mappa (moderna) ha altezza fissa più piccola */
+        #maps-area .map-box:nth-of-type(2) { flex: 0 0 220px; max-width: 400px; align-self: flex-end; }
+        .map-box img, #svg-boccaccio { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: cover; }
+        #svg-boccaccio { z-index: 10; cursor: crosshair; }
+        #google-map { height: 100%; width: 100%; }
+
+        /* Pannello Destro */
+        #right-panel { flex: 0 0 25%; min-width: 260px; max-width: 40%; background: #ecf0f1; padding: 25px; overflow-y: auto; border-left: 6px solid #bdc3c7; box-shadow: -5px 0 15px rgba(0,0,0,0.2); }
+        
+        h2 { margin-top: 0; color: #2c3e50; border-bottom: 2px solid #bdc3c7; padding-bottom: 10px; font-size: 20px; }
+        .section { background: #fff; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #dcdde1; }
+        .section-title { font-weight: bold; color: #2980b9; margin-bottom: 10px; text-transform: uppercase; font-size: 12px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+
+        label { font-weight: bold; display: block; margin-top: 10px; font-size: 11px; color: #7f8c8d; }
+        input, textarea, select { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; font-family: inherit; }
+        input[readonly] { background: #f9f9f9; color: #95a5a6; }
+
+        /* Pulsanti */
+        .btn-save { background: #27ae60; color: white; padding: 15px; border: none; width: 100%; margin-top: 10px; cursor: pointer; font-weight: bold; border-radius: 4px; font-size: 14px; transition: 0.3s; }
+        .btn-save:hover { background: #219150; transform: translateY(-2px); }
+        .btn-reset { background: #95a5a6; color: white; padding: 10px; border: none; width: 100%; margin-top: 10px; cursor: pointer; border-radius: 4px; font-size: 12px; }
+
+        /* Ricerca e Tabella */
+        #search-box { margin-bottom: 10px; border: 2px solid #2980b9; }
+        #list-container { margin-top: 25px; }
+        table { width: 100%; font-size: 11px; border-collapse: collapse; background: white; border-radius: 4px; overflow: hidden; }
+        th { background: #34495e; color: white; padding: 10px; text-align: left; }
+        td { padding: 8px; border-bottom: 1px solid #eee; }
+        .btn-edit { background: #2980b9; color: white; border: none; padding: 4px 8px; cursor: pointer; border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+<div id="maps-area">
+    <div class="map-box" id="antica-map">
+        <label style="color:white; background:rgba(0,0,0,0.7); position:absolute; z-index:20; padding:4px 10px; border-radius:0 0 5px 0;">MAPPA ANTICA (Disegna Area)</label>
+        <img src="assets/mediterraneo.png">
+        <svg id="svg-boccaccio" viewBox="0 0 1000 1000" preserveAspectRatio="none"></svg>
+    </div>
+    <div class="map-box">
+        <label style="color:white; background:rgba(0,0,0,0.7); position:absolute; z-index:20; padding:4px 10px; border-radius:0 0 5px 0;">MAPPA MODERNA (Punto GPS)</label>
+        <div id="google-map"></div>
+    </div>
+</div>
+
+<div id="right-panel">
+    <h2>Database Editor</h2>
+
+    <div class="section">
+        <div class="section-title">1. Identità e Posizione (Anagrafica)</div>
+        <div style="display:flex; gap:10px;">
+            <div style="width: 80px;"><label>ID</label><input type="number" id="f-id" placeholder="ID"></div>
+            <div style="flex:1;"><label>Nome Latino</label><input type="text" id="f-lat" placeholder="es: Achaicum mare"></div>
+            <div style="width: 100px;"><label>Parent ID</label><input type="number" id="f-parent" placeholder="ID Padre"></div>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <div style="flex:1;"><label>Nome Italiano</label><input type="text" id="f-nome"></div>
+            <div style="flex:1;">
+                <label>Tipologia</label>
+                <input type="text" id="f-tipo" placeholder="es: mare, lago, canale...">
+            </div>
+        </div>
+        <label>Denominazione Moderna</label><input type="text" id="f-moderno">
+        <label>Coordinate GPS (Lat, Lng)</label><input type="text" id="f-gps">
+        <label>Punti Area SVG</label>
+        <textarea id="debug-punti" rows="3" style="font-size:9px; color:#7f8c8d; background:#f1f2f6; padding:5px; border-radius:4px; min-height:60px; width:100%; box-sizing:border-box; word-break:break-all; resize:vertical;">Clicca sulla mappa antica...</textarea>
+                <div style="display:flex; gap:6px; margin-top:8px;">
+                    <button class="btn-reset" id="undo-btn" onclick="undo()" disabled>↶ Undo</button>
+                    <button class="btn-reset" id="redo-btn" onclick="redo()" disabled>↷ Redo</button>
+                    <button class="btn-reset" id="del-btn" onclick="deleteSelectedPoint()">✖ Elimina punto</button>
+                </div>
+    </div>
+
+    <div class="section" style="border-left: 5px solid #27ae60;">
+        <div class="section-title">2. Citazione Testuale (Aggiungi Opera)</div>
+        <label>Opera di Boccaccio</label>
+        <select id="f-opera">
+            <option value="De Montibus">DM - De Montibus</option>
+            <option value="Genealogie">GDG - Genealogie deorum gentilium</option>
+            <option value="De Mulieribus">DMC - De mulieribus claris</option>
+            <option value="De Casibus">DCVI - De casibus virorum illustrium</option>
+            <option value="Esposizioni">E - Esposizioni sopra la Comedia</option>
+            <option value="Bucolicum Carmen">BC - Bucolicum Carmen</option>
+        </select>
+        <label>Riferimento (Libro, Cap, Verso)</label><input type="text" id="f-rif" placeholder="es: VII, 2 o vi, 35">
+        <label>Descrizione / Citazione (ITA)</label><textarea id="f-desc-it" rows="4" placeholder="Cosa scrive Boccaccio..."></textarea>
+        <label>Descrizione / Citazione (ENG)</label><textarea id="f-desc-en" rows="3"></textarea>
+        <label>Fonti citate da Boccaccio</label><input type="text" id="f-fonti" placeholder="es: Plinio, Pomponio Mela...">
+    </div>
+
+    <button class="btn-save" onclick="salva()">💾 SALVA / AGGIUNGI CITAZIONE</button>
+    <button class="btn-reset" onclick="resetTotale()">🔄 NUOVO MARE (RESET)</button>
+
+    <div id="list-container">
+        <div class="section-title">Cerca nel Database</div>
+        <div style="display:flex; gap:5px; margin-bottom:10px;">
+            <input type="text" id="search-box" placeholder="Cerca ID o Nome..." 
+                   style="border: 2px solid #2980b9;" onkeyup="filtraLista()">
+        </div>
+        <div style="max-height: 300px; overflow-y: auto; border: 1px solid #bdc3c7; border-radius: 4px;">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:50px;">ID</th>
+                        <th>Nome Latino</th>
+                        <th style="width:80px;">Azione</th>
+                    </tr>
+                </thead>
+                <tbody id="lista-db"></tbody>
+            </table>
+        </div>
+        <div id="search-info" style="font-size: 10px; color: #7f8c8d; margin-top: 5px; text-align: right;">Caricamento dati...</div>
+    </div>
+</div>
+
+<script>
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzSbtexidApEFGaot3KqTQe4-FRJFrwLxgtfLSez1dh_6MwIbPtiOxUt6a8bNoFp9jr/exec";
+let puntiB = [];
+let databaseLocale = [];
+let markerGps;
+
+// Mappa Leaflet
+let map = L.map('google-map').setView([38.0, 15.0], 5);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+map.on('click', (e) => {
+    if (markerGps) map.removeLayer(markerGps);
+    markerGps = L.marker([e.latlng.lat, e.latlng.lng]).addTo(map);
+    document.getElementById('f-gps').value = e.latlng.lat.toFixed(5) + "," + e.latlng.lng.toFixed(5);
+});
+
+// Permetti modifica manuale delle coordinate GPS nell'input
+const gpsInput = document.getElementById('f-gps');
+if (gpsInput) {
+    gpsInput.addEventListener('change', () => {
+        const val = gpsInput.value.trim();
+        if (!val.includes(',')) return;
+        const parts = val.split(',');
+        const lat = parseFloat(parts[0]);
+        const lng = parseFloat(parts[1]);
+        if (isNaN(lat) || isNaN(lng)) return;
+        if (markerGps) map.removeLayer(markerGps);
+        markerGps = L.marker([lat, lng]).addTo(map);
+        map.setView([lat, lng], 7);
+    });
+}
+
+// SVG Boccaccio
+const svgB = document.getElementById('svg-boccaccio');
+// Abilita pan/zoom sull'area antica
+const antElem = document.getElementById('antica-map');
+let pzAnt = null;
+if (window.Panzoom && antElem) {
+    try { pzAnt = Panzoom(antElem, { maxScale: 8, contain: 'outside', step: 0.1 }); antElem.parentElement.addEventListener('wheel', pzAnt.zoomWithWheel); } catch(e) { console.warn('Panzoom init failed', e); }
+}
+
+// Abilita modifica manuale dei punti SVG tramite textarea debug-punti
+const debugEl = document.getElementById('debug-punti');
+if (debugEl) {
+    debugEl.addEventListener('change', () => {
+        pushState();
+        const val = debugEl.value.trim();
+        if (val === '' || val === 'Clicca sulla mappa antica...') {
+            puntiB = [];
+            if (svgB.querySelector('polygon')) svgB.querySelector('polygon').remove();
+            updateButtons();
+            return;
+        }
+        puntiB = val.split(/\s+/).filter(s=>s.includes(',')).map(s=> {
+            const parts = s.split(',');
+            const a = parseInt(parts[0].trim());
+            const b = parseInt(parts[1].trim());
+            return `${isNaN(a)?0:a},${isNaN(b)?0:b}`;
+        });
+        disegnaPoligono();
+    });
+}
+
+// Gestione punti e handle per editing
+let isDragging = false;
+let draggingIndex = -1;
+let selectedIndex = -1;
+let undoStack = [];
+let redoStack = [];
+
+function pushState() {
+    undoStack.push(puntiB.slice());
+    if (undoStack.length > 200) undoStack.shift();
+    redoStack = [];
+    updateButtons();
+}
+function undo() {
+    if (undoStack.length === 0) return;
+    redoStack.push(puntiB.slice());
+    puntiB = undoStack.pop();
+    selectedIndex = -1;
+    disegnaPoligono();
+    updateButtons();
+}
+function redo() {
+    if (redoStack.length === 0) return;
+    undoStack.push(puntiB.slice());
+    puntiB = redoStack.pop();
+    selectedIndex = -1;
+    disegnaPoligono();
+    updateButtons();
+}
+function updateButtons() {
+    const ub = document.getElementById('undo-btn');
+    const rb = document.getElementById('redo-btn');
+    const db = document.getElementById('del-btn');
+    if (ub) ub.disabled = undoStack.length === 0;
+    if (rb) rb.disabled = redoStack.length === 0;
+    if (db) db.disabled = selectedIndex < 0 || selectedIndex >= puntiB.length;
+}
+
+svgB.addEventListener('click', (e) => {
+    if (isDragging) return; // ignore clicks while dragging
+    pushState();
+    const rect = svgB.getBoundingClientRect();
+    const x = Math.round(((e.clientX - rect.left) / rect.width) * 1000);
+    const y = Math.round(((e.clientY - rect.top) / rect.height) * 1000);
+    puntiB.push(`${x},${y}`);
+    document.getElementById('debug-punti').value = puntiB.join(" ");
+    disegnaPoligono();
+});
+
+function disegnaPoligono() {
+    let poly = svgB.querySelector('polygon');
+    if(!poly) {
+        poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+        poly.setAttribute("style", "fill:rgba(46,204,113,0.4);stroke:#27ae60;stroke-width:2");
+        svgB.appendChild(poly);
+    }
+    poly.setAttribute("points", puntiB.join(" "));
+    renderHandles();
+    updateButtons();
+}
+
+function renderHandles() {
+    // rimuove handle esistenti
+    svgB.querySelectorAll('circle.vertex-handle').forEach(c=>c.remove());
+    const poly = svgB.querySelector('polygon');
+    if(!poly) return;
+    puntiB.forEach((p, idx) => {
+        const parts = String(p).split(',');
+        const x = parts[0] || 0;
+        const y = parts[1] || 0;
+        const handle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+        handle.setAttribute('class','vertex-handle');
+        handle.setAttribute('r',6);
+        handle.setAttribute('fill','#f1c40f');
+        handle.setAttribute('stroke','#000');
+        handle.setAttribute('stroke-width',1);
+        handle.setAttribute('cx', x);
+        handle.setAttribute('cy', y);
+        handle.setAttribute('data-idx', idx);
+        handle.style.cursor = 'move';
+        // evidenzia se selezionato
+        if (idx === selectedIndex) {
+            handle.setAttribute('stroke', '#e74c3c');
+            handle.setAttribute('stroke-width', 2);
+        }
+        handle.addEventListener('pointerdown', (ev) => {
+            ev.stopPropagation();
+            pushState();
+            isDragging = true;
+            draggingIndex = idx;
+            selectedIndex = idx;
+            try { svgB.setPointerCapture(ev.pointerId); } catch(e){}
+            updateButtons();
+        });
+        // click per selezionare senza drag
+        handle.addEventListener('click', (ev) => { ev.stopPropagation(); selectedIndex = idx; updateButtons(); });
+        svgB.appendChild(handle);
+    });
+}
+
+svgB.addEventListener('pointermove', (e) => {
+    if(!isDragging) return;
+    const rect = svgB.getBoundingClientRect();
+    const nx = Math.round(((e.clientX - rect.left) / rect.width) * 1000);
+    const ny = Math.round(((e.clientY - rect.top) / rect.height) * 1000);
+    if (draggingIndex >= 0 && draggingIndex < puntiB.length) {
+        puntiB[draggingIndex] = `${nx},${ny}`;
+        const poly = svgB.querySelector('polygon');
+        if(poly) poly.setAttribute('points', puntiB.join(' '));
+        const handle = svgB.querySelector(`circle.vertex-handle[data-idx="${draggingIndex}"]`);
+        if(handle) { handle.setAttribute('cx', nx); handle.setAttribute('cy', ny); }
+        document.getElementById('debug-punti').value = puntiB.join(' ');
+    }
+});
+
+function stopDragging(e) {
+    if(isDragging) {
+        isDragging = false;
+        draggingIndex = -1;
+        try { svgB.releasePointerCapture(e.pointerId); } catch(e) {}
+    }
+}
+svgB.addEventListener('pointerup', stopDragging);
+svgB.addEventListener('pointercancel', stopDragging);
+svgB.addEventListener('mouseleave', () => { isDragging = false; draggingIndex = -1; });
+
+function deleteSelectedPoint() {
+    if (selectedIndex < 0 || selectedIndex >= puntiB.length) { alert('Nessun punto selezionato'); return; }
+    pushState();
+    puntiB.splice(selectedIndex, 1);
+    selectedIndex = -1;
+    disegnaPoligono();
+}
+
+async function caricaLista() {
+    try {
+        const res = await fetch(WEB_APP_URL);
+        if (res.ok) {
+            databaseLocale = await res.json();
+            document.getElementById('search-info').innerText = `${databaseLocale.length} elementi pronti.`;
+            renderizzaTabella([]);
+            return;
+        } else {
+            console.warn('Remote fetch non OK', res.status);
+            throw new Error('Remote fetch non OK');
+        }
+    } catch(e) {
+        document.getElementById('search-info').innerText = "Errore connessione, caricamento locale se disponibile.";
+        try {
+            const local = await fetch('./assets/data.json');
+            if (local.ok) {
+                databaseLocale = await local.json();
+                document.getElementById('search-info').innerText = `${databaseLocale.length} elementi (fallback locale).`;
+                renderizzaTabella([]);
+                return;
+            }
+        } catch(e2) { /* fallback non disponibile */ }
+        databaseLocale = [];
+        renderizzaTabella([]);
+    }
+}
+
+function renderizzaTabella(data) {
+    const tbody = document.getElementById('lista-db');
+    tbody.innerHTML = "";
+    data.forEach(m => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td><b>${m.id}</b></td><td>${m.name_lat || '---'}</td><td><button class="btn-edit" onclick="caricaInEditor(${m.id})">EDIT</button></td>`;
+        tbody.appendChild(tr);
+    });
+}
+
+function filtraLista() {
+    const query = document.getElementById('search-box').value.toLowerCase().trim();
+    if (query === "") { renderizzaTabella([]); return; }
+    const filtrati = databaseLocale.filter(m => String(m.id).includes(query) || (m.name_lat && m.name_lat.toLowerCase().includes(query)));
+    renderizzaTabella(filtrati);
+}
+
+function caricaInEditor(id) {
+    const m = databaseLocale.find(x => x.id == id);
+    if(!m) return;
+    
+    if(svgB.querySelector('polygon')) svgB.querySelector('polygon').remove();
+
+    document.getElementById('f-id').value = m.id;
+    document.getElementById('f-id').readOnly = true;
+    document.getElementById('f-lat').value = m.name_lat || "";
+    document.getElementById('f-nome').value = m.name_it || "";
+    document.getElementById('f-moderno').value = m.denominazione_moderna || "";
+    document.getElementById('f-tipo').value = m.tipologia || "";
+    document.getElementById('f-gps').value = m.corrispondenza_moderna || "";
+    document.getElementById('f-parent').value = m.parent_id || ""; // Carica parent_id
+
+    puntiB = m.punti_svg ? m.punti_svg.split(" ") : [];
+    undoStack = []; redoStack = []; selectedIndex = -1; pushState();
+    document.getElementById('debug-punti').value = puntiB.join(" ");
+    if(puntiB.length > 0) disegnaPoligono();
+
+    if(m.corrispondenza_moderna && m.corrispondenza_moderna.includes(",")) {
+        const c = m.corrispondenza_moderna.split(",");
+        if (markerGps) map.removeLayer(markerGps);
+        markerGps = L.marker([parseFloat(c[0]), parseFloat(c[1])]).addTo(map);
+        map.setView([parseFloat(c[0]), parseFloat(c[1])], 7);
+    }
+}
+
+async function salva() {
+    const id = document.getElementById('f-id').value;
+    if(!id) { alert("Inserisci un ID!"); return; }
+
+    const btn = document.querySelector('.btn-save');
+    btn.innerText = "Salvataggio...";
+    
+    const dati = {
+        id: id,
+        name_lat: document.getElementById('f-lat').value,
+        name_it: document.getElementById('f-nome').value,
+        denominazione_moderna: document.getElementById('f-moderno').value,
+        tipologia: document.getElementById('f-tipo').value,
+        corrispondenza_moderna: document.getElementById('f-gps').value,
+        punti_svg: puntiB.join(" "),
+        parent_id: document.getElementById('f-parent').value, // Invia parent_id
+        opera: document.getElementById('f-opera').value,
+        reference: document.getElementById('f-rif').value,
+        desc_it: document.getElementById('f-desc-it').value,
+        desc_en: document.getElementById('f-desc-en').value,
+        fonti_usate: document.getElementById('f-fonti').value
+    };
+
+    try {
+        const res = await fetch(WEB_APP_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dati) });
+        if (res.ok) {
+            alert("Salvato sul server!");
+            btn.innerText = "💾 SALVA / AGGIUNGI CITAZIONE";
+            await caricaLista();
+        } else {
+            alert("Server ha risposto con errore. Salvato solo localmente.");
+            databaseLocale.push(dati);
+            btn.innerText = "💾 SALVA / AGGIUNGI CITAZIONE";
+            renderizzaTabella([]);
+        }
+    } catch (e) {
+        alert("Errore connessione: salvato localmente.");
+        databaseLocale.push(dati);
+        btn.innerText = "💾 SALVA / AGGIUNGI CITAZIONE";
+        renderizzaTabella([]);
+    }
+}
+
+function resetTotale() {
+    document.getElementById('f-id').readOnly = false;
+    document.querySelectorAll('input, textarea').forEach(i => i.value = "");
+    puntiB = [];
+    document.getElementById('debug-punti').value = "Clicca sulla mappa antica...";
+    if(svgB.querySelector('polygon')) svgB.querySelector('polygon').remove();
+    if(markerGps) map.removeLayer(markerGps);
+}
+
+caricaLista();
+</script>
+</body>
+</html>
