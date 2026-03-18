@@ -1,13 +1,49 @@
 const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzSbtexidApEFGaot3KqTQe4-FRJFrwLxgtfLSez1dh_6MwIbPtiOxUt6a8bNoFp9jr/exec";
 
-let database = [];
 let livelloCorrente = "principale"; // "principale" o ID del padre
 let markerAttivo = null;
+
+// --- DATA MANAGER ---
+const DataManager = {
+    db: [],
+    async load() {
+        try {
+            const response = await fetch(WEB_APP_URL);
+            this.db = await response.json();
+        } catch (e) {
+            console.warn("Errore caricamento remote, tentando fallback locale:", e);
+            try {
+                const respLocal = await fetch('./assets/data.json');
+                if (respLocal.ok) {
+                    this.db = await respLocal.json();
+                } else {
+                    this.db = [];
+                }
+            } catch (e2) {
+                console.error("Fallback locale non disponibile:", e2);
+                this.db = [];
+            }
+        }
+    },
+    getAll() {
+        return this.db;
+    },
+    getById(id) {
+        return this.db.find(m => String(m.id) === String(id));
+    },
+    getChildren(parentId) {
+        return this.db.filter(m => String(m.parent_id) === String(parentId));
+    },
+    getRoot() {
+        return this.db.filter(m => !m.parent_id || m.parent_id === "");
+    }
+};
 
 // Inizializza Panzoom
 const elem = document.getElementById('scene-boccaccio');
 const pz = Panzoom(elem, { 
     maxScale: 5, 
+    minScale: 1,
     contain: 'outside', 
     canvas: true,
     step: 0.5
@@ -44,53 +80,72 @@ function renderPin(mare) {
     });
     const centroX = punti.reduce((sum, p) => sum + p.x, 0) / punti.length;
     const centroY = punti.reduce((sum, p) => sum + p.y, 0) / punti.length;
-    const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    circle.setAttribute("cx", centroX);
-    circle.setAttribute("cy", centroY);
-    circle.setAttribute("r", "12"); // leggermente più grande per touch
-    circle.setAttribute("class", "map-pin");
-    circle.setAttribute("tabindex", "0");
-    circle.setAttribute("aria-label", (mare.name_it || mare.name_lat || "Pin mappa"));
+    // Determina se è un mare padre (nessun parent_id o parent_id vuoto)
+    const isPadre = !mare.parent_id || mare.parent_id === "";
+    // Colori
+    const fillColor = isPadre ? "#1565c0" : "#4fc3f7";
+    const strokeColor = isPadre ? "#0d47a1" : "#039be5";
+    // Crea un gruppo SVG per l'icona ancora
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    g.setAttribute("class", "map-pin");
+    g.setAttribute("tabindex", "0");
+    g.setAttribute("aria-label", (mare.name_it || mare.name_lat || "Pin mappa"));
+    g.setAttribute("style", `cursor:pointer`);
+    // Path ancora SVG (più grande)
+    const anchorPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    anchorPath.setAttribute("d", "M0,-10 v8 m0 0 c0,6 8,6 8,0 m-8,0 c0,6 -8,6 -8,0 m8,0 a2,2 0 1,1 -4,0 a2,2 0 1,1 4,0 z M0,-10 l-3,3 m3,-3 l3,3");
+    anchorPath.setAttribute("fill", fillColor);
+    anchorPath.setAttribute("stroke", strokeColor);
+    anchorPath.setAttribute("stroke-width", "2.2");
+    anchorPath.setAttribute("stroke-linecap", "round");
+    anchorPath.setAttribute("stroke-linejoin", "round");
+    anchorPath.setAttribute("transform", `translate(${centroX},${centroY}) scale(2.1)`);
+    g.appendChild(anchorPath);
     // Tooltip custom
-    circle.addEventListener('mouseenter', (e) => showTooltip(e, mare.name_it || mare.name_lat));
-    circle.addEventListener('mouseleave', hideTooltip);
-    circle.addEventListener('focus', (e) => showTooltip(e, mare.name_it || mare.name_lat));
-    circle.addEventListener('blur', hideTooltip);
+    g.addEventListener('mouseenter', (e) => showTooltip(e, mare.name_it || mare.name_lat));
+    g.addEventListener('mouseleave', hideTooltip);
+    g.addEventListener('focus', (e) => showTooltip(e, mare.name_it || mare.name_lat));
+    g.addEventListener('blur', hideTooltip);
     // Click/tap
-    circle.onclick = (e) => { e.stopPropagation(); renderDettagli(mare); focusPin(circle); };
+    g.onclick = (e) => { e.stopPropagation(); renderDettagli(mare); focusPin(g); };
     // Tastiera
-    circle.addEventListener('keydown', (e) => {
+    g.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             renderDettagli(mare);
-            focusPin(circle);
+            focusPin(g);
         }
     });
-    return circle;
+    return g;
 }
 
 function renderArea(mare) {
-    const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-    poly.setAttribute("points", mare.punti_svg);
-    poly.setAttribute("class", "area-interna");
-    poly.setAttribute("tabindex", "0");
-    poly.setAttribute("aria-label", (mare.name_it || mare.name_lat || "Area mappa"));
+    const points = mare.punti_svg.split(" ").map(p => {
+        const coords = p.split(",");
+        return { x: parseInt(coords[0]), y: parseInt(coords[1]) };
+    });
+    const pathStr = pointsToSmoothPath(points, true);
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", pathStr);
+    path.setAttribute("class", "area-interna");
+    path.setAttribute("tabindex", "0");
+    path.setAttribute("aria-label", (mare.name_it || mare.name_lat || "Area mappa"));
     // Tooltip custom
-    poly.addEventListener('mouseenter', (e) => showTooltip(e, mare.name_it || mare.name_lat));
-    poly.addEventListener('mouseleave', hideTooltip);
-    poly.addEventListener('focus', (e) => showTooltip(e, mare.name_it || mare.name_lat));
-    poly.addEventListener('blur', hideTooltip);
+    path.addEventListener('mouseenter', (e) => showTooltip(e, mare.name_it || mare.name_lat));
+    path.addEventListener('mouseleave', hideTooltip);
+    path.addEventListener('focus', (e) => showTooltip(e, mare.name_it || mare.name_lat));
+    path.addEventListener('blur', hideTooltip);
     // Click/tap
-    poly.onclick = (e) => { e.stopPropagation(); renderDettagli(mare); focusPin(poly); };
+    path.onclick = (e) => { e.stopPropagation(); renderDettagli(mare); focusPin(path); };
     // Tastiera
-    poly.addEventListener('keydown', (e) => {
+    path.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             renderDettagli(mare);
-            focusPin(poly);
+            focusPin(path);
         }
     });
-    return poly;
+    return path;
 }
 // Tooltip custom
 let tooltipDiv = null;
@@ -131,15 +186,42 @@ function renderDettagli(mare) {
     const vecchiaArea = document.getElementById('area-evidenziata-temp');
     if (vecchiaArea) vecchiaArea.remove();
     if (mare.punti_svg) {
-        const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-        poly.setAttribute("points", mare.punti_svg);
-        poly.setAttribute("id", "area-evidenziata-temp");
-        poly.setAttribute("style", "fill:rgba(241, 196, 15, 0.4); stroke:#f1c40f; stroke-width:3; pointer-events:none;");
-        svg.appendChild(poly);
+        const points = mare.punti_svg.split(" ").map(p => {
+            const coords = p.split(",");
+            return { x: parseInt(coords[0]), y: parseInt(coords[1]) };
+        });
+        const pathStr = pointsToSmoothPath(points, true);
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("d", pathStr);
+        path.setAttribute("id", "area-evidenziata-temp");
+        path.setAttribute("style", "fill:rgba(241, 196, 15, 0.4); stroke:#f1c40f; stroke-width:3; pointer-events:none;");
+        svg.appendChild(path);
     }
     renderCitazioni(mare.lista_citazioni);
     renderSubMenu(mare);
     renderMappaModerna(mare);
+}
+// Trasforma una lista di punti [{x,y},...] in una path SVG smooth (Catmull-Rom to Bezier)
+function pointsToSmoothPath(points, closed) {
+    if (!points || points.length < 2) return '';
+    let d = '';
+    const pts = points.slice();
+    if (closed) pts.push(points[0]);
+    d += `M${pts[0].x},${pts[0].y}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+        const p0 = pts[i === 0 ? pts.length - 2 : i - 1];
+        const p1 = pts[i];
+        const p2 = pts[i + 1];
+        const p3 = pts[(i + 2) % pts.length];
+        // Catmull-Rom to Bezier
+        const cp1x = p1.x + (p2.x - p0.x) / 6;
+        const cp1y = p1.y + (p2.y - p0.y) / 6;
+        const cp2x = p2.x - (p3.x - p1.x) / 6;
+        const cp2y = p2.y - (p3.y - p1.y) / 6;
+        d += ` C${cp1x},${cp1y} ${cp2x},${cp2y} ${p2.x},${p2.y}`;
+    }
+    if (closed) d += ' Z';
+    return d;
 }
 
 function renderCitazioni(lista_citazioni) {
@@ -172,7 +254,7 @@ function renderCitazioni(lista_citazioni) {
 function renderSubMenu(mare) {
     const subMenu = document.getElementById('sub-menu-container');
     subMenu.innerHTML = "";
-    const figli = database.filter(m => String(m.parent_id) === String(mare.id));
+    const figli = DataManager.getChildren(mare.id);
     if (figli.length > 0) {
         const btn = document.createElement('button');
         btn.innerHTML = "🔍 Esplora Mari Interni (" + figli.length + ")";
@@ -199,29 +281,14 @@ L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical
 }).addTo(map);
 
 
-// --- FUNZIONI DI INTERAZIONE (USANO SOLO LE FUNZIONI DI RENDERING) ---
+// --- FUNZIONI DI INTERAZIONE (USANO DATA MANAGER E RENDERING) ---
 
 async function caricaApp() {
-    try {
-        // Carichiamo i dati direttamente dalla Web App (che include già parent_id e citazioni)
-        const response = await fetch(WEB_APP_URL);
-        database = await response.json();
-        renderMappa(database, livelloCorrente);
-    } catch (e) {
-        console.warn("Errore caricamento remote, tentando fallback locale:", e);
-        try {
-            const respLocal = await fetch('./assets/data.json');
-            if (respLocal.ok) {
-                database = await respLocal.json();
-            } else {
-                database = [];
-            }
-        } catch (e2) {
-            console.error("Fallback locale non disponibile:", e2);
-            database = [];
-        }
-        renderMappa(database, livelloCorrente);
-    }
+    await DataManager.load();
+    renderMappa(
+        livelloCorrente === "principale" ? DataManager.getRoot() : DataManager.getChildren(livelloCorrente),
+        livelloCorrente
+    );
 }
 
 function entraNelMare(mare) {
@@ -249,14 +316,14 @@ function entraNelMare(mare) {
         );
     }, 150);
     document.getElementById('btn-back-map').style.display = "block";
-    renderMappa(database, livelloCorrente);
+    renderMappa(DataManager.getChildren(livelloCorrente), livelloCorrente);
 }
 
 function tornaAlLivelloPrincipale() {
     livelloCorrente = "principale";
     pz.reset({ animate: true });
     document.getElementById('btn-back-map').style.display = "none";
-    renderMappa(database, livelloCorrente);
+    renderMappa(DataManager.getRoot(), livelloCorrente);
 }
 
 function chiudiModale() {
