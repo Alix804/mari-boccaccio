@@ -8,76 +8,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
-    <style>
-        /* Stile per il tasto torna indietro sopra la mappa */
-        #btn-back-map {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            z-index: 100;
-            background: linear-gradient(180deg,#8b4513,#6b3510);
-            color: white;
-            border: 2px solid #f4e4bc;
-            padding: 10px 15px;
-            cursor: pointer;
-            display: none;
-            font-family: 'Georgia', serif;
-            box-shadow: 0 6px 18px rgba(0,0,0,0.45);
-            border-radius: 6px;
-        }
-        #btn-back-map:hover { background: linear-gradient(180deg,#a0522d,#7a3f16); }
-        
-        /* Stile per i PIN (punti) sulla mappa */
-        .map-pin {
-            fill: #ff5a5f;
-            stroke: #fff;
-            stroke-width: 2;
-            cursor: pointer;
-            transition: transform 0.18s ease, filter 0.18s ease, stroke-width 0.12s ease;
-            transform-box: fill-box;
-            transform-origin: center;
-            filter: drop-shadow(0 6px 10px rgba(0,0,0,0.35));
-        }
-        .map-pin:hover {
-            transform: translateY(-4px) scale(1.18);
-            fill: #ffd166;
-            stroke-width: 2.6;
-            filter: drop-shadow(0 10px 18px rgba(0,0,0,0.45));
-        }
-        @keyframes pinPulse {
-            0% { transform: scale(1); opacity: 1; }
-            70% { transform: scale(1.5); opacity: 0; }
-            100% { transform: scale(1.5); opacity: 0; }
-        }
-        .map-pin.pulse-ring { animation: pinPulse 1.6s ease-out infinite; }
-
-        /* Stile per le aree interne */
-        .area-interna {
-            fill: rgba(52, 152, 219, 0.28);
-            stroke: #1f78b4;
-            stroke-width: 1.4;
-            cursor: pointer;
-            transition: fill 0.18s ease, stroke 0.18s ease;
-        }
-        .area-interna:hover { fill: rgba(52, 152, 219, 0.6); }
-
-        /* Modal styling: più compatto con testi più piccoli */
-        #info-modal .modal-content {
-            background: linear-gradient(#fffaf0,#fff6ea);
-            border-radius: 10px;
-            padding: 14px 16px;
-            box-shadow: 0 12px 30px rgba(0,0,0,0.25);
-            font-size: 13px;
-            line-height: 1.38;
-            color: #333;
-        }
-        #info-modal .modal-content h2 { font-size: 16px; margin: 0 0 6px 0; color:#6b3510; }
-        #info-modal .modal-content p { font-size: 13px; margin: 6px 0; }
-        #info-modal .pergamena-body p { font-size: 13px; }
-        #citazioni-container p { font-size: 13px; }
-        .scroll-text { max-height: 240px; overflow-y: auto; padding-right: 6px; }
-        .close-x { font-size: 20px; cursor: pointer; color:#8b4513; }
-    </style>
+   
 </head>
 <body>
 
