@@ -2,51 +2,98 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <title>I Mari di Boccaccio</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
-   
+    <title>Progetto MARIS – I Mari di Boccaccio</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Spectral:wght@700&family=Uncial+Antiqua&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: linear-gradient(120deg, #f4e4bc 0%, #e0cba8 100%);
+            font-family: 'Spectral', serif;
+            color: #3e2723;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .landing-container {
+            background: rgba(255,255,255,0.92);
+            border-radius: 18px;
+            box-shadow: 0 8px 32px rgba(139,69,19,0.18);
+            padding: 48px 32px 36px 32px;
+            max-width: 540px;
+            text-align: center;
+            margin: 32px 12px;
+        }
+        .landing-title {
+            font-family: 'Uncial Antiqua', cursive;
+            font-size: 2.3em;
+            color: #8b4513;
+            margin-bottom: 10px;
+        }
+        .landing-subtitle {
+            font-size: 1.2em;
+            color: #6b3510;
+            margin-bottom: 24px;
+        }
+        .landing-desc {
+            font-size: 1.08em;
+            margin-bottom: 28px;
+            line-height: 1.6;
+        }
+        .landing-btn {
+            display: inline-block;
+            background: linear-gradient(90deg,#8b4513,#d2a86a);
+            color: #fff;
+            font-family: 'Spectral', serif;
+            font-size: 1.15em;
+            font-weight: bold;
+            padding: 16px 38px;
+            border: none;
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(139,69,19,0.18);
+            cursor: pointer;
+            text-decoration: none;
+            letter-spacing: 0.5px;
+            transition: background 0.2s, transform 0.2s;
+        }
+        .landing-btn:hover {
+            background: linear-gradient(90deg,#a0522d,#e1c08a);
+            transform: translateY(-2px) scale(1.04);
+        }
+        .landing-credits {
+            margin-top: 32px;
+            font-size: 0.98em;
+            color: #7a5a3a;
+            opacity: 0.8;
+        }
+        @media (max-width: 600px) {
+            .landing-container { padding: 22px 4vw 18px 4vw; }
+            .landing-title { font-size: 1.3em; }
+            .landing-btn { font-size: 1em; padding: 12px 18px; }
+        }
+    </style>
 </head>
 <body>
-
-    <div class="dashboard">
-        <div class="left-side">
-            <div class="map-container" id="cont-boccaccio">
-                <button id="btn-back-map" onclick="tornaAlLivelloPrincipale()">⬅ Torna alla mappa generale</button>
-                <div id="scene-boccaccio">
-                    <img src="assets/mediterraneo.png" alt="Mappa Boccaccio">
-                    <svg id="svg-boccaccio" viewBox="0 0 1000 1000" preserveAspectRatio="none"></svg>
-                </div>
-            </div>
+    <div class="landing-container">
+        <div class="landing-title">I Mari di Boccaccio</div>
+        <div class="landing-subtitle">Progetto MARIS – Mappatura digitale dei mari nelle opere latine di Giovanni Boccaccio</div>
+        <div class="landing-desc">
+            Questo progetto nasce per esplorare, organizzare e visualizzare i riferimenti geografici ai mari presenti nelle opere latine di Boccaccio.<br><br>
+            <b>Obiettivi:</b><br>
+            <ul style="text-align:left; margin: 18px auto 18px 18px; max-width: 420px; color:#5d4037;">
+                <li>Creare un database strutturato dei mari citati da Boccaccio.</li>
+                <li>Visualizzare i dati su una mappa digitale interattiva.</li>
+                <li>Rendere accessibili i risultati della ricerca a studiosi e pubblico.</li>
+            </ul>
+            <b>Scopri la mappa, esplora le citazioni, naviga tra storia e geografia!</b>
         </div>
-
-        <div class="right-side">
-            <div id="info-modal" class="info-panel active"> <div class="modal-content">
-                    <span class="close-x" onclick="chiudiModale()">&times;</span>
-                    <h2 id="m-nome">Benvenuti</h2>
-                    <div class="pergamena-body">
-                        <p id="m-info-extra" style="margin: 5px 0; font-weight: bold; color: #8b4513;"></p>
-                        <p style="margin: 5px 0;"><strong>Latino:</strong> <span id="m-lat">-</span></p>
-                        <p style="margin: 5px 0;"><strong>Moderno:</strong> <span id="m-mod">-</span></p>
-                        
-                        <div id="citazioni-container" class="scroll-text">
-                            <p id="m-desc">Esplora la mappa e clicca sui punti per scoprire i mari descritti da Boccaccio.</p>
-                        </div>
-                        
-                        <div id="sub-menu-container" style="margin-top:20px; text-align:center;"></div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="modern-map-box">
-                <div id="modern-map"></div>
-            </div>
+        <a class="landing-btn" href="mappa.html">Entra nella mappa</a>
+        <div class="landing-credits">
+            © 2026 Progetto MARIS – Università, Ricercatori e Collaboratori<br>
+            Design &amp; sviluppo: Team INA
         </div>
     </div>
-
-    <script src="script.js"></script>
 </body>
 </html>

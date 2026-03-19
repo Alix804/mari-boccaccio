@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>I Mari di Boccaccio</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+   
+</head>
+<body>
+
+    <div class="dashboard">
+        <div class="left-side">
+            <div class="map-container" id="cont-boccaccio">
+                <button id="btn-back-map" onclick="tornaAlLivelloPrincipale()">⬅ Torna alla mappa generale</button>
+                <div id="scene-boccaccio">
+                    <img src="assets/mediterraneo.png" alt="Mappa Boccaccio">
+                    <svg id="svg-boccaccio" viewBox="0 0 1000 1000" preserveAspectRatio="none"></svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-side">
+            <div id="info-modal" class="info-panel active"> <div class="modal-content">
+                    <span class="close-x" onclick="chiudiModale()">&times;</span>
+                    <h2 id="m-nome">Benvenuti</h2>
+                    <div class="pergamena-body">
+                        <p id="m-info-extra" style="margin: 5px 0; font-weight: bold; color: #8b4513;"></p>
+                        <p style="margin: 5px 0;"><strong>Latino:</strong> <span id="m-lat">-</span></p>
+                        <p style="margin: 5px 0;"><strong>Moderno:</strong> <span id="m-mod">-</span></p>
+                        
+                        <div id="citazioni-container" class="scroll-text">
+                            <p id="m-desc">Esplora la mappa e clicca sui punti per scoprire i mari descritti da Boccaccio.</p>
+                        </div>
+                        
+                        <div id="sub-menu-container" style="margin-top:20px; text-align:center;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modern-map-box">
+                <div id="modern-map"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
