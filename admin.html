@@ -46,9 +46,10 @@
         .btn-edit { background: #2980b9; color: white; border: none; padding: 4px 8px; cursor: pointer; border-radius: 3px; }
     </style>
 </head>
-<body>
+<body style="margin:0; padding:0; height:100vh; width:100vw; overflow:hidden; background: #f4e4bc;">
+<div style="display:flex; flex-direction:row; height:100vh; width:100vw; overflow:hidden;">
 
-<div id="maps-area">
+<div id="maps-area" style="flex:1 1 0; min-width:0; overflow:auto; background: #34495e; padding: 15px; display: flex; flex-direction: column; gap: 15px; align-items: stretch;">
     <div class="map-box" id="antica-map">
         <label style="color:white; background:rgba(0,0,0,0.7); position:absolute; z-index:20; padding:4px 10px; border-radius:0 0 5px 0;">MAPPA ANTICA (Disegna Area)</label>
         <img src="assets/mediterraneo.png">
@@ -60,7 +61,7 @@
     </div>
 </div>
 
-<div id="right-panel">
+<div id="right-panel" style="flex:0 0 370px; max-width:420px; min-width:260px; background: #ecf0f1; padding: 25px 10px 25px 25px; overflow-y: auto; border-left: 6px solid #bdc3c7; box-shadow: -5px 0 15px rgba(0,0,0,0.2); height:100vh;">
     <h2>Database Editor</h2>
 
     <div class="section">
@@ -75,7 +76,7 @@
             <div style="flex:1;">
                 <label>Tipologia</label>
                 <input type="text" id="f-tipo" placeholder="es: mare, lago, canale...">
-            </div>
+                </div>
         </div>
         <label>Denominazione Moderna</label><input type="text" id="f-moderno">
         <label>Coordinate GPS (Lat, Lng)</label><input type="text" id="f-gps">
